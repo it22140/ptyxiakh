@@ -178,7 +178,7 @@ def plot_comparison(results):
 
 
 # --- Κύρια Επεξεργασία Dataset ---
-def process_dataset(dataset_name, num_samples=100):
+def process_dataset(dataset_name, num_samples=300):
     dataset = load_custom_dataset(dataset_name)
     label_map = get_label_map(dataset_name)
     sample_indices = random.sample(range(len(dataset['train'])), num_samples)
