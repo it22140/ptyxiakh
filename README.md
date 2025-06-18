@@ -15,7 +15,7 @@
 
 Απαιτήσεις
 
-- Python 3.8 ή νεότερη
+- Python 3.12.4
 - Εγκατάσταση βιβλιοθηκών:
 
 ```bash
@@ -37,9 +37,11 @@ python script.py
 
 Παραγόμενα Αρχεία
 
--results/{dataset}_metrics.csv: Αποτελέσματα αξιολόγησης
+-results/{dataset}_metrics.csv: Αποτελέσματα αξιολόγησης.
 
--results/{dataset}_comparison_plot.png: Γραφήματα σύγκρισης μοντέλων
+-results/{dataset}_comparison_plot.png: Γραφήματα σύγκρισης μοντέλων.
+
+-results/{dataset_name}_errors.csv":Ανάλυση σφαλμάτων για ανα μοντέλο.
 
 Υποστηριζόμενα Μοντέλα
 
@@ -63,4 +65,4 @@ python script.py
 
 Μπορείτε να αλλάξετε τον αριθμό δειγμάτων ανά dataset (default: 300) από τη συνάρτηση:
 
-process_dataset(dataset_name, num_samples=100)
+process_dataset(dataset_name, num_samples=300)
