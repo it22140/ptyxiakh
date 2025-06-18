@@ -243,6 +243,7 @@ def process_dataset(dataset_name, num_samples=300):
                         "error_type": "false_positive",
                         "true": t_label,
                         "predicted": p_label
+                        "sentence": " ".join(tokens)
                     })
                 elif t_label != 'O' and p_label == 'O':
                     error_log.append({
@@ -254,6 +255,7 @@ def process_dataset(dataset_name, num_samples=300):
                         "error_type": "false_negative",
                         "true": t_label,
                         "predicted": p_label
+                        "sentence": " ".join(tokens)
                     })
                 elif t_label != 'O' and p_label != 'O' and t_label != p_label:
                     error_log.append({
@@ -265,6 +267,7 @@ def process_dataset(dataset_name, num_samples=300):
                         "error_type": "wrong_type",
                         "true": t_label,
                         "predicted": p_label
+                        "sentence": " ".join(tokens)
                     })
 
             p, r, f1 = precision_recall_f1(true_labels, pred_labels, label_map)
