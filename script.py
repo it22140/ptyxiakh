@@ -178,12 +178,15 @@ def plot_comparison(results):
 
 
 # --- Κύρια Επεξεργασία Dataset ---
+
+
 def process_dataset(dataset_name, num_samples=300):
     dataset = load_custom_dataset(dataset_name)
     label_map = get_label_map(dataset_name)
     sample_indices = random.sample(range(len(dataset['train'])), num_samples)
     models = ["spacy", "llama3", "gemma2:latest", "mistral"]
     model_results = {}
+    error_log = []
 
     for model_name in tqdm(models, desc=f"Models on {dataset_name}"):
         total_p = total_r = total_f1 = 0
@@ -195,15 +198,74 @@ def process_dataset(dataset_name, num_samples=300):
             true_ner = sample.get('ner_tags') or [0]*len(tokens)
             true_labels = [label_map.get(tag, 'O') for tag in true_ner]
 
-            predicted = call_model(model_name, tokens)
+            try:
+                predicted = call_model(model_name, tokens)
+            except Exception as e:
+                error_log.append({
+                    "model": model_name,
+                    "dataset": dataset_name,
+                    "sample_index": idx,
+                    "error_type": "llm_exception",
+                    "error_msg": str(e),
+                    "tokens": " ".join(tokens)
+                })
+                continue
+
             pred_labels = [l for _, l in predicted]
 
             if len(pred_labels) != len(tokens):
-                print(f" Length mismatch! {len(tokens)} tokens vs {len(pred_labels)} preds.")
+                error_log.append({
+                    "model": model_name,
+                    "dataset": dataset_name,
+                    "sample_index": idx,
+                    "error_type": "length_mismatch",
+                    "tokens": " ".join(tokens),
+                    "true_labels": " ".join(true_labels),
+                    "predicted_labels": " ".join(pred_labels)
+                })
                 if len(pred_labels) > len(tokens):
                     pred_labels = pred_labels[:len(tokens)]
                 else:
                     pred_labels += ['O'] * (len(tokens) - len(pred_labels))
+
+            # Ανάλυση σφαλμάτων ανά token
+            for i in range(len(tokens)):
+                t_label = true_labels[i]
+                p_label = pred_labels[i]
+
+                if t_label == 'O' and p_label != 'O':
+                    error_log.append({
+                        "model": model_name,
+                        "dataset": dataset_name,
+                        "sample_index": idx,
+                        "token": tokens[i],
+                        "position": i,
+                        "error_type": "false_positive",
+                        "true": t_label,
+                        "predicted": p_label
+                    })
+                elif t_label != 'O' and p_label == 'O':
+                    error_log.append({
+                        "model": model_name,
+                        "dataset": dataset_name,
+                        "sample_index": idx,
+                        "token": tokens[i],
+                        "position": i,
+                        "error_type": "false_negative",
+                        "true": t_label,
+                        "predicted": p_label
+                    })
+                elif t_label != 'O' and p_label != 'O' and t_label != p_label:
+                    error_log.append({
+                        "model": model_name,
+                        "dataset": dataset_name,
+                        "sample_index": idx,
+                        "token": tokens[i],
+                        "position": i,
+                        "error_type": "wrong_type",
+                        "true": t_label,
+                        "predicted": p_label
+                    })
 
             p, r, f1 = precision_recall_f1(true_labels, pred_labels, label_map)
             total_p += p
@@ -214,11 +276,19 @@ def process_dataset(dataset_name, num_samples=300):
         avg_time = elapsed / len(sample_indices)
 
         model_results[model_name] = {
-            'precision': total_p/len(sample_indices),
-            'recall': total_r/len(sample_indices),
-            'f1': total_f1/len(sample_indices),
+            'precision': total_p / len(sample_indices),
+            'recall': total_r / len(sample_indices),
+            'f1': total_f1 / len(sample_indices),
             'time_per_sample': avg_time
         }
+
+    # Αποθήκευση σφαλμάτων
+    if error_log:
+        os.makedirs("results", exist_ok=True)
+        error_df = pd.DataFrame(error_log)
+        error_path = f"results/{dataset_name}_errors.csv"
+        error_df.to_csv(error_path, index=False)
+        print(f"❗Καταγράφηκαν σφάλματα στο: {error_path}")
 
     print(f"\n===== ΟΛΟΚΛΗΡΩΣΗ Dataset: {dataset_name} =====")
     for model, metrics in model_results.items():
@@ -227,10 +297,9 @@ def process_dataset(dataset_name, num_samples=300):
         print(f"  Recall: {metrics['recall']:.4f}")
         print(f"  F1 Score: {metrics['f1']:.4f}")
         print(f"  Μέσος Χρόνος ανά δείγμα: {metrics['time_per_sample']:.4f} sec\n")
-        print("="*40)
+        print("=" * 40)
 
     return model_results
-
 
 # --- Main ---
 def main():
